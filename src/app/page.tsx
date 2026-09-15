@@ -1,9 +1,16 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+        <Link
+          href="/estimate"
+          className="self-center rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:text-zinc-300 dark:hover:bg-[#1a1a1a] sm:self-start"
+        >
+          🧮 인테리어 물량 산출기 바로가기
+        </Link>
         <Image
           className="dark:invert h-5 w-[100px]"
           src="/next.svg"
