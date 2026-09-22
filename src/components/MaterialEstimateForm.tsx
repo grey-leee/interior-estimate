@@ -64,7 +64,7 @@ const CATEGORIES: CategoryConfig[] = [
     emoji: "🖼️",
     defaultLossRate: 10,
     areaLabel: "도배 시공면적 (천장 · 벽 구분 입력)",
-    note: "실크벽지는 무늬 맞춤 손실이 커 합지보다 커버리지가 낮게 적용됩니다. 풀·초배지는 천장+벽 합산 면적 기준입니다.",
+    note: "실크벽지는 무늬 맞춤 손실이 커 합지보다 커버리지가 낮게 적용됩니다. 풀·초배지는 천장+벽 합산 면적 기준입니다. 노무비는 로스율을 적용하지 않은 실제 시공 면적(천장+벽) × 단가로 계산됩니다.",
     items: [
       { id: "paper_ceiling", name: "천장벽지", spec: "폭 530mm×10M", unit: "롤", coverage: 4.5 },
       { id: "paper_wall", name: "벽 벽지", spec: "폭 530mm×10M", unit: "롤", coverage: 4.5 },
@@ -105,6 +105,7 @@ type CategoryState = {
   wallRollLength: number;
   wallpaperCeilingArea: number;
   wallpaperWallArea: number;
+  wallpaperLaborRate: number;
   tileModelName: string;
   tilePiecesPerBox: number;
   tileWallArea: number;
@@ -199,6 +200,7 @@ function initialCategoryState(config: CategoryConfig): CategoryState {
     wallRollLength: DEFAULT_ROLL_LENGTH_M,
     wallpaperCeilingArea: 0,
     wallpaperWallArea: 0,
+    wallpaperLaborRate: 0,
     tileModelName: "",
     tilePiecesPerBox: 0,
     tileWallArea: 0,
@@ -435,13 +437,21 @@ export default function MaterialEstimateForm() {
     return byCategory;
   }, [state]);
 
+  const wallpaperLaborCost = useMemo(() => {
+    const cat = state.wallpaper;
+    const area = cat.wallpaperCeilingArea + cat.wallpaperWallArea;
+    return area * cat.wallpaperLaborRate;
+  }, [state.wallpaper]);
+
   const categoryTotals = useMemo(() => {
     const totals = {} as Record<CategoryId, number>;
     for (const config of CATEGORIES) {
-      totals[config.id] = results[config.id].reduce((sum, r) => sum + r.amount, 0);
+      const materialTotal = results[config.id].reduce((sum, r) => sum + r.amount, 0);
+      totals[config.id] =
+        config.id === "wallpaper" ? materialTotal + wallpaperLaborCost : materialTotal;
     }
     return totals;
-  }, [results]);
+  }, [results, wallpaperLaborCost]);
 
   const grandTotal = useMemo(
     () => CATEGORIES.reduce((sum, config) => sum + categoryTotals[config.id], 0),
@@ -736,6 +746,27 @@ export default function MaterialEstimateForm() {
                     className="w-20 rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-900 dark:border-white/[.16] dark:focus:border-zinc-100"
                   />
                 </label>
+
+                {config.id === "wallpaper" && (
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      노무비 단가 (원/㎡)
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={500}
+                      value={cat.wallpaperLaborRate || ""}
+                      onChange={(e) =>
+                        updateCategory(config.id, {
+                          wallpaperLaborRate: Number(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="예: 8000"
+                      className="w-28 rounded-lg border border-black/[.12] bg-transparent px-3 py-2 text-sm outline-none focus:border-zinc-900 dark:border-white/[.16] dark:focus:border-zinc-100"
+                    />
+                  </label>
+                )}
 
                 {config.id === "paint" && (
                   <label className="flex flex-col gap-1">
@@ -1178,6 +1209,22 @@ export default function MaterialEstimateForm() {
                     ))}
                   </tbody>
                   <tfoot>
+                    {config.id === "wallpaper" && (
+                      <tr className="border-t border-black/[.08] dark:border-white/[.12]">
+                        <td
+                          colSpan={5}
+                          className="py-2 pr-2 text-right text-sm text-zinc-500 dark:text-zinc-400"
+                        >
+                          노무비 (
+                          {formatNumber(cat.wallpaperCeilingArea + cat.wallpaperWallArea, 1)}㎡ ×{" "}
+                          {formatNumber(cat.wallpaperLaborRate)}원/㎡)
+                        </td>
+                        <td className="py-2 pl-2 text-right text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                          {formatNumber(wallpaperLaborCost)}원
+                        </td>
+                        <td />
+                      </tr>
+                    )}
                     <tr className="border-t border-black/[.08] dark:border-white/[.12]">
                       <td colSpan={5} className="py-2 pr-2 text-right text-sm font-medium text-zinc-600 dark:text-zinc-400">
                         공정 합계
